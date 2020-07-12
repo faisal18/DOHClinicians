@@ -12,11 +12,19 @@ namespace DOHClinicians
     class DOH
     {
         public string baseDir = ConfigurationManager.AppSettings.Get("baseDir");
-        public string filename = "DOH_" + DateTime.Now.ToString("yyyyMMdd") + ".xlsx";
-        public string Sheetname = ConfigurationManager.AppSettings.Get("Sheetname");
+
+        public string Clinician_filename = "Clinician_" + DateTime.Now.ToString("yyyyMMdd") + ".xlsx";
+        public string Clinician_Transformed_filename = "Clinician_Transformed_" + DateTime.Now.ToString("yyyyMMdd") + ".csv";
+        public string ClinicianHistory_filename = "ClinicianHistory_" + DateTime.Now.ToString("yyyyMMdd") + ".xlsx";
+
+        public string ClinicianSheetname = ConfigurationManager.AppSettings.Get("ClinicianSheetname");
+        public string ClinicianHistorySheetname = ConfigurationManager.AppSettings.Get("ClinicianHistorySheetname");
         public bool to_filter = bool.Parse(ConfigurationManager.AppSettings.Get("to_filter"));
 
-        public string CurrentFilePath = string.Empty;
+        public string Clinician_FilePath = string.Empty;
+        public string ClinicianHistory_FilePath = string.Empty;
+        public string Clinician_Transformed_FilePath = string.Empty;
+
         public string OldFilePath = string.Empty;
         public string filterfilename = "Result";
 
@@ -24,83 +32,32 @@ namespace DOHClinicians
         {
             Controller();
         }
-
         public void Controller()
         {
+            //OldFilePath = baseDir + "Clinician_" + DateTime.Now.AddDays(-1).ToString("yyyyMMdd") + ".csv";
+
             logger.Info("DOH CLINICIAN INTEGRATION STARTED");
-            CurrentFilePath = baseDir + filename;
-            OldFilePath = baseDir + "DOH_" + DateTime.Now.AddDays(-1).ToString("yyyyMMdd") + ".csv";
+            Clinician_FilePath = baseDir + Clinician_filename;
+            ClinicianHistory_FilePath = baseDir + ClinicianHistory_filename;
+            Clinician_Transformed_FilePath = baseDir + Clinician_Transformed_filename;
 
             try
             {
-
-                if (DownloadFile(CurrentFilePath))
-                {
-                    if (ConvertFiletoCSV(CurrentFilePath, Sheetname))
-                    {
-                        CurrentFilePath = baseDir + Path.GetFileNameWithoutExtension(filename) + ".csv";
-                        if (to_filter)
-                        {
-                            if (FilterFile(OldFilePath, CurrentFilePath))
-                            {
-                                if (CreateFile(baseDir + filterfilename + ".csv"))
-                                {
-
-                                }
-                            }
-                        }
-                        else
-                        {
-                            if (CreateFile(CurrentFilePath))
-                            {
-
-                            }
-                        }
-                    }
-                }
-
+                CreateOutputFile(GetActiveCliniciansController(Clinician_FilePath, ClinicianHistory_FilePath), Clinician_Transformed_FilePath);
                 logger.Info("File Downloaded successfully");
-
             }
             catch (Exception ex)
             {
                 logger.Info(ex);
             }
         }
-
-        private bool CreateFile(string FullPath)
+        private void CreateOutputFile(List<Clinicians> list_doh,string FullPath)
         {
             bool result = false;
-            logger.Info("Creating file in " + FullPath);
             try
             {
-                string header = "License,name,Facility License,Facility Name,area,Active From,Active To,is active,source,Specialty ID 1,Username,Password,Gender,Nationality,Specialty ID 2,Specialty ID 3,type,Email,Phone,Specialty,Specialty Field ID,Specialty Field,major,profession,HAAD_Category,Current Status ,Old License\n";
-                List<DOHFile> list_doh = new List<DOHFile>();
-                logger.Info("Objectifying file " + CurrentFilePath);
-                foreach (string line in File.ReadAllLines(CurrentFilePath))
-                {
-                    string[] rows = line.Split('^');
-
-                    DOHFile obj_file = new DOHFile();
-                    obj_file.ClinicianLicense = Helper.CheckNull(Helper.CheckComma(rows[0]));
-                    obj_file.ClinicianName = Helper.CheckNull(Helper.CheckComma(rows[1]));
-                    obj_file.Major = Helper.CheckNull(Helper.CheckComma(rows[2]));
-                    obj_file.Profession = Helper.CheckNull(Helper.CheckComma(rows[3]));
-                    obj_file.Category = Helper.CheckNull(Helper.CheckComma(rows[4]));
-                    obj_file.Gender = Helper.CheckNull(Helper.CheckGender(rows[5]));
-                    obj_file.FacilityName = Helper.CheckNull(Helper.CheckComma(rows[6]));
-                    obj_file.FacilityLicense = Helper.CheckNull(rows[7]);
-                    obj_file.Location = Helper.CheckNull(Helper.CheckComma(rows[8]));
-                    obj_file.FacilityType = Helper.CheckNull(Helper.CheckComma(rows[9]));
-                    obj_file.Status = Helper.CheckNull(Helper.CheckActive(rows[10]));
-                    obj_file.From = Helper.CheckNull(LMU_ParserCS.ConvertDate_LMU(Helper.ConvertDate(rows[11])));
-                    obj_file.To = Helper.CheckNull(LMU_ParserCS.ConvertDate_LMU(Helper.ConvertDate(rows[12])));
-
-                    logger.Info("Number of objects loaded : " + list_doh.Count);
-                    list_doh.Add(obj_file);
-                }
-
                 StringBuilder sb = new StringBuilder();
+                string header = "License,name,Facility License,Facility Name,area,Active From,Active To,is active,source,Specialty ID 1,Username,Password,Gender,Nationality,Specialty ID 2,Specialty ID 3,type,Email,Phone,Specialty,Specialty Field ID,Specialty Field,major,profession,HAAD_Category,Current Status ,Old License\n";
                 sb.Append(header);
                 string seperator = ",";
                 logger.Info("Appending to new file");
@@ -148,9 +105,135 @@ namespace DOHClinicians
             {
                 logger.Info(ex);
             }
-            return result;
         }
-        private bool DownloadFile(string FullPath)
+
+
+        private List<Clinicians> GetActiveCliniciansController(string CliniciansPath,string CliniciansHistoryPath)
+        {
+            List<Clinicians> lst_Clinician_new = new List<Clinicians>();
+            try
+            {
+                string Clinician_URL = ConfigurationManager.AppSettings.Get("CliniciansURL");
+                DownloadFile(CliniciansPath, Clinician_URL);
+                ConvertFiletoCSV(CliniciansPath, ClinicianSheetname);
+                List<Clinicians> lst_Clinician = ListofClinicians(baseDir + Clinician_filename + ".csv");
+
+                string ClinicianHistory_URL = ConfigurationManager.AppSettings.Get("CliniciansHistoryURL");
+                DownloadFile(CliniciansHistoryPath, ClinicianHistory_URL);
+                ConvertFiletoCSV(CliniciansHistoryPath, CliniciansHistoryPath);
+                List<CliniciansHistory> lst_ClinicianHistory = ListofCliniciansHistory(baseDir + ClinicianHistory_filename + ".csv");
+
+
+                if (lst_Clinician.Count > 0 && lst_ClinicianHistory.Count > 0) 
+                {
+                    lst_Clinician = lst_Clinician.Where(x => x.Status.ToUpper() == "ACTIVE").ToList();
+                    foreach (Clinicians obj in lst_Clinician)
+                    {
+                        if(lst_ClinicianHistory.Any(x => x.LicenseNumber == obj.ClinicianLicense))
+                        {
+                            lst_Clinician_new.Add(obj);
+                        }
+                    }
+                }
+                else
+                {
+                    logger.Info("Something went wrong");
+                }
+
+            }
+            catch (Exception ex)
+            {
+                logger.Info(ex);
+            }
+
+            return lst_Clinician_new;
+        }
+
+        private List<Clinicians> ListofClinicians(string FullPath)
+        {
+            bool result = false;
+            List<Clinicians> list_doh = new List<Clinicians>();
+
+            logger.Info("Creating file in " + FullPath);
+            try
+            {
+                
+                logger.Info("Objectifying file " + FullPath);
+                int row = 0;
+                foreach (string line in File.ReadAllLines(FullPath))
+                {
+                    row = row + 1;
+                    if(row==1)
+                    {
+                        continue;
+                    }
+
+                    string[] rows = line.Split('^');
+
+                    Clinicians obj_file = new Clinicians();
+                    obj_file.ClinicianLicense = Helper.CheckNull(Helper.CheckComma(rows[0]));
+                    obj_file.ClinicianName = Helper.CheckNull(Helper.CheckComma(rows[1]));
+                    obj_file.Major = Helper.CheckNull(Helper.CheckComma(rows[2]));
+                    obj_file.Profession = Helper.CheckNull(Helper.CheckComma(rows[3]));
+                    obj_file.Category = Helper.CheckNull(Helper.CheckComma(rows[4]));
+                    obj_file.Gender = Helper.CheckNull(Helper.CheckGender(rows[5]));
+                    obj_file.FacilityName = Helper.CheckNull(Helper.CheckComma(rows[6]));
+                    obj_file.FacilityLicense = Helper.CheckNull(rows[7]);
+                    obj_file.Location = Helper.CheckNull(Helper.CheckComma(rows[8]));
+                    obj_file.FacilityType = Helper.CheckNull(Helper.CheckComma(rows[9]));
+                    obj_file.Status = Helper.CheckNull(Helper.CheckActive(rows[10]));
+                    obj_file.From = DateTime.ParseExact(Helper.CheckNull(rows[11]), "d/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture);
+                    obj_file.To = DateTime.ParseExact(Helper.CheckNull(rows[12]), "d/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture);
+
+                    logger.Info("Number of Clinicians parsed : " + list_doh.Count);
+                    list_doh.Add(obj_file);
+                }
+
+                list_doh = list_doh.Where(x => x.Status.ToUpper() == "ACTIVE").ToList();
+                
+            }
+            catch (Exception ex)
+            {
+                logger.Info(ex);
+            }
+            return list_doh;
+        }
+        private List<CliniciansHistory> ListofCliniciansHistory(string FullPath)
+        {
+            List<CliniciansHistory> lst_obj = new List<CliniciansHistory>();
+            try
+            {
+                //take latest only
+                //dd-MMM-yyyy
+                int row = 0;
+                foreach(string line in File.ReadAllLines(FullPath))
+                {
+                    row = row + 1;
+                    if (row == 1)
+                    {
+                        continue;
+                    }
+                    string[] rows = line.Split('^');
+                    CliniciansHistory obj = new CliniciansHistory();
+
+                    obj.LicenseNumber = Helper.CheckNull(Helper.CheckComma(rows[0]));
+                    obj.FacilityLicenseNumber = Helper.CheckNull(Helper.CheckComma(rows[1]));
+                    obj.EffectiveDate = DateTime.ParseExact(Helper.CheckNull(rows[2]), "d-MMM-yy", System.Globalization.CultureInfo.InvariantCulture);
+                    obj.Status = Helper.CheckNull(Helper.CheckComma(rows[3]));
+                    lst_obj.Add(obj);
+                }
+
+                lst_obj = lst_obj.GroupBy(x => x.LicenseNumber).Select(x => x.OrderByDescending(y => y.EffectiveDate).First()).ToList();
+                lst_obj = lst_obj.Where(x => x.Status.ToUpper() == "ACTIVE").ToList();
+            }
+            catch (Exception ex)
+            {
+                logger.Info(ex);
+            }
+            return lst_obj;
+        }
+
+        private bool DownloadFile(string FullPath,string URL)
         {
             bool result = false;
             logger.Info("Downloading file");
@@ -159,7 +242,7 @@ namespace DOHClinicians
             {
                 ServicePointManager.Expect100Continue = true;
                 ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-                string URL = ConfigurationManager.AppSettings.Get("URL");
+               
                 using (WebClient wc = new WebClient())
                 {
                     wc.DownloadFile(URL, FullPath);
@@ -192,18 +275,6 @@ namespace DOHClinicians
                         result = true;
                     }
                 }
-
-               
-
-                //Microsoft.Office.Interop.Excel.Application xlapp;
-                //xlapp = new Microsoft.Office.Interop.Excel.Application();
-                //xlapp.Visible = true;
-                //Microsoft.Office.Interop.Excel.Workbook xlworkbook = xlapp.Workbooks.Open(CurrentFilePath);
-                //xlworkbook = xlapp.ActiveWorkbook;
-                //Microsoft.Office.Interop.Excel.Worksheet xlsheet = xlapp.ActiveSheet;
-                //xlsheet.SaveAs(baseDir + Path.GetFileNameWithoutExtension(CurrentFilePath) + ".csv", Microsoft.Office.Interop.Excel.XlFileFormat.xlCSV);
-                //result = true;
-                //CurrentFilePath = baseDir + Path.GetFileNameWithoutExtension(CurrentFilePath) + ".csv";
             }
             catch (Exception ex)
             {
@@ -211,6 +282,7 @@ namespace DOHClinicians
             }
             return result;
         }
+
         private System.Data.OleDb.OleDbConnection returnConnection(string fileName)
         {
 

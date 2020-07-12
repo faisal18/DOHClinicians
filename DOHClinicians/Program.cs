@@ -4,8 +4,15 @@
     {
         static void Main(string[] args)
         {
-            DOH obj = new DOH();
 
+            //Clinicians->Download & Convert
+            //History->Download & Convert
+            //GetActive(Clinicians, History)
+            //CreateOutput(ActiveOnly)
+            //ParseThroughLMU->GateLogic & Speciality
+            //UploadOnLMU
+
+            DOH obj = new DOH();
         }
     }
 }

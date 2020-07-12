@@ -1,6 +1,8 @@
-﻿namespace DOHClinicians
+﻿using System;
+
+namespace DOHClinicians
 {
-    public class DOHFile
+    class Clinicians
     {
         public string ClinicianLicense { get; set; }
         public string ClinicianName { get; set; }
@@ -13,7 +15,7 @@
         public string Location { get; set; }
         public string FacilityType { get; set; }
         public string Status { get; set; }
-        public string From { get; set; }
-        public string To { get; set; }
+        public DateTime From { get; set; }
+        public DateTime To { get; set; }
     }
 }

@@ -52,8 +52,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CliniciansHistory.cs" />
     <Compile Include="DOH.cs" />
-    <Compile Include="DOHFile.cs" />
+    <Compile Include="Clinicians.cs" />
     <Compile Include="GateParams.cs" />
     <Compile Include="Helper.cs" />
     <Compile Include="LMU_ParserCS.cs" />
