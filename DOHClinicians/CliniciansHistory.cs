@@ -10,7 +10,7 @@ namespace DOHClinicians
     {
         public string LicenseNumber { get; set; }
         public string FacilityLicenseNumber { get; set; }
-        public DateTime EffectiveDate { get; set; }
+        public string EffectiveDate { get; set; }
         public string Status { get; set; }
 
     }

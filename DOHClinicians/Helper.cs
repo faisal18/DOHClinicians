@@ -42,7 +42,7 @@ namespace DOHClinicians
         public static string CheckNull(string data)
         {
             string result = string.Empty;
-            if (data == null || data == "\n" || data == string.Empty || data == "\\n      " || data == "--")
+            if (data == null || data == "\n" || data == string.Empty || data == "\\n      " || data == "--" || data == "NULL")
             {
                 result = string.Empty;
             }
@@ -208,6 +208,24 @@ namespace DOHClinicians
             }
 
             return result;
+        }
+        public static string DateParser(string date)
+        {
+            string newdate = null;
+            try
+            {
+                string result = Helper.CheckNull(date);
+                if (result != "")
+                {
+                    newdate = DateTime.ParseExact(result, "d/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture).ToString();
+                }
+
+            }
+            catch (Exception ex)
+            {
+                logger.Info(ex);
+            }
+            return newdate;
         }
     }
 }

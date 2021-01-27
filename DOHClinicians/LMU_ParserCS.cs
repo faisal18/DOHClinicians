@@ -10,14 +10,28 @@ namespace DOHClinicians
     public class LMU_ParserCS
     {
 
-        public static string LMU_Parser(string filepath)
+
+        public static void LMU_Controller(string filepath)
+        {
+            try
+            {
+                Upload_File(LMU_Parser(filepath));
+            }
+            catch (Exception ex)
+            {
+                logger.Info(ex);
+            }
+        }
+
+        private static string LMU_Parser(string filepath)
         {
             string baseDir = ConfigurationManager.AppSettings.Get("baseDir");
-            string newfilename = Path.GetFileNameWithoutExtension(filepath);
-            newfilename = newfilename + "_LMUPassed.csv";
+            string newfilename = "Clinicians_DOH_" + DateTime.Now.ToString("yyyyMMdd") + "_LMUPassed.csv";
 
             try
             {
+                logger.Info("Parsing file with LMU");
+
                 string[] lines = File.ReadAllLines(filepath);
 
                 StringBuilder sb = new StringBuilder();
@@ -34,6 +48,7 @@ namespace DOHClinicians
 
 
                         string[] data = lines[i].Split(',');
+                        logger.Info("LMU iteration " + i + " clinician license " + data[0]);
 
 
                         string license = data[0];
@@ -42,10 +57,9 @@ namespace DOHClinicians
                         string isActive = data[9];
                         string source = data[10];
 
-                        string SpecialityID = data[11];
-                        string Speciality = data[12];
+                        //string SpecialityID = data[11];
+                        //string Speciality = data[12];
 
-                        Console.WriteLine("LMU iteration " + i + " clinician license " + license);
 
 
 
@@ -54,7 +68,8 @@ namespace DOHClinicians
                         obj = GetTruthTable(obj);
                         isActive = obj.Out_isActive;
                         source = obj.Out_Source;
-                        Speciality = GetLMURecordForSpecialities(SpecialityID, Specialitiesversion);
+
+                        //Speciality = GetLMURecordForSpecialities(SpecialityID, Specialitiesversion);
 
                         license_start = ConvertDate_LMU(license_start);
                         license_end = ConvertDate_LMU(license_end);
@@ -74,7 +89,10 @@ namespace DOHClinicians
                             isActive + "," +
                             source + "," +
                             data[11] + "," +
-                            Speciality + "," +
+
+                            //Speciality + "," +
+                            data[12] + "," +
+
                             data[13] + "," +
                             data[14] + "," +
                             data[15] + "," +
@@ -87,13 +105,14 @@ namespace DOHClinicians
                     }
 
 
-                    Console.WriteLine("Writting file");
+                    Console.WriteLine("Writting LMU file");
 
 
                     using (StreamWriter wrtier = File.CreateText(baseDir + "\\" + newfilename))
                     {
                         wrtier.Write(sb.ToString());
                     }
+
                 }
             }
             catch (Exception ex)
@@ -101,16 +120,16 @@ namespace DOHClinicians
                 Console.WriteLine(ex);
             }
 
-            return newfilename;
+            return baseDir + newfilename;
         }
-        public static string GetLMULatest()
+        private static string GetLMULatest()
         {
             string result = string.Empty;
             try
             {
                 string url = ConfigurationManager.AppSettings.Get("LMU_URL") + ConfigurationManager.AppSettings.Get("LMU_Clinician_Latest");
-                string username = ConfigurationManager.AppSettings.Get("LMU_Prod_Username");
-                string token = ConfigurationManager.AppSettings.Get("LMU_Prod_Token");
+                string username = ConfigurationManager.AppSettings.Get("LMU_Username");
+                string token = ConfigurationManager.AppSettings.Get("LMU_Token");
                 result = PostCall_ByBody(url, "", token, username, false);
                 //result = "7539";
             }
@@ -121,14 +140,14 @@ namespace DOHClinicians
 
             return result;
         }
-        public static string GetLMUSpecialitesLatest()
+        private static string GetLMUSpecialitesLatest()
         {
             string result = string.Empty;
             try
             {
                 string url = ConfigurationManager.AppSettings.Get("LMU_URL") + ConfigurationManager.AppSettings.Get("LMU_Specialities_Latest");
-                string username = ConfigurationManager.AppSettings.Get("LMU_Prod_Username");
-                string token = ConfigurationManager.AppSettings.Get("LMU_Prod_Token");
+                string username = ConfigurationManager.AppSettings.Get("LMU_Username");
+                string token = ConfigurationManager.AppSettings.Get("LMU_Token");
                 result = PostCall_ByBody(url, "", token, username, false);
                 //result = "7539";
             }
@@ -139,7 +158,7 @@ namespace DOHClinicians
 
             return result;
         }
-        public static GateParams GetClinicianRecord(string data, string latestversion)
+        private static GateParams GetClinicianRecord(string data, string latestversion)
         {
             string result = string.Empty;
             GateParams obj = new GateParams();
@@ -147,8 +166,8 @@ namespace DOHClinicians
             try
             {
                 string url = ConfigurationManager.AppSettings.Get("LMU_URL") + ConfigurationManager.AppSettings.Get("LMU_Clinician"); ;
-                string username = ConfigurationManager.AppSettings.Get("LMU_Prod_Username");
-                string token = ConfigurationManager.AppSettings.Get("LMU_Prod_Token");
+                string username = ConfigurationManager.AppSettings.Get("LMU_Username");
+                string token = ConfigurationManager.AppSettings.Get("LMU_Token");
                 string license = data;
 
 
@@ -182,15 +201,15 @@ namespace DOHClinicians
 
             return obj;
         }
-        public static string GetLMURecordForSpecialities(string data, string Specialitiesversion)
+        private static string GetLMURecordForSpecialities(string data, string Specialitiesversion)
         {
             string result = string.Empty;
             string description = string.Empty;
             try
             {
                 string url = ConfigurationManager.AppSettings.Get("LMU_URL") + ConfigurationManager.AppSettings.Get("LMU_Specialities"); ;
-                string username = ConfigurationManager.AppSettings.Get("LMU_Prod_Username");
-                string token = ConfigurationManager.AppSettings.Get("LMU_Prod_Token");
+                string username = ConfigurationManager.AppSettings.Get("LMU_Username");
+                string token = ConfigurationManager.AppSettings.Get("LMU_Token");
                 string body = "{\r\n \"oldVersion\": 0,\"targetVersion\": " + Specialitiesversion + ",\r\n \"param\" : \"specialtyId=" + data + "\" \r\n}";
 
 
@@ -223,7 +242,7 @@ namespace DOHClinicians
             return description;
         }
 
-        public static GateParams GetTruthTable(GateParams obj)
+        private static GateParams GetTruthTable(GateParams obj)
         {
             try
             {
@@ -314,7 +333,7 @@ namespace DOHClinicians
 
             return obj;
         }
-        public static string CheckActive_Reverse(string data)
+        private static string CheckActive_Reverse(string data)
         {
             string active = string.Empty;
 
@@ -327,7 +346,7 @@ namespace DOHClinicians
 
             return active;
         }
-        public static string PostCall_ByBody(string URL, string postdata, string accessKey, string username, bool isGet)
+        private static string PostCall_ByBody(string URL, string postdata, string accessKey, string username, bool isGet)
         {
             string result = string.Empty;
             bool OKAY = false;
@@ -349,7 +368,7 @@ namespace DOHClinicians
                             wc.Headers.Set("username", username);
                             wc.Headers.Set("access-key", accessKey);
 
-                            logger.Info("Sheryan called at " + DateTime.Now);
+                            logger.Info("LMU Clinicians called at " + DateTime.Now);
                             if (!isGet)
                             {
                                 result = wc.UploadString(URL, postdata);
@@ -415,7 +434,7 @@ namespace DOHClinicians
                 return ex.Message;
             }
         }
-        public static string ConvertDate_LMU(string date)
+        private static string ConvertDate_LMU(string date)
         {
             string resultdate = date;
             try
@@ -436,7 +455,8 @@ namespace DOHClinicians
 
             return resultdate;
         }
-        public static void Upload_File(string local_file_path)
+
+        private static void Upload_File(string local_file_path)
         {
             string ftpUserName = System.Configuration.ConfigurationManager.AppSettings["FTPUsername"];
             string ftpPassword = System.Configuration.ConfigurationManager.AppSettings["FTPPassword"];
@@ -445,17 +465,18 @@ namespace DOHClinicians
             try
             {
 
-                logger.Info("Uploading file " + local_file_path + " to address " + ftpServerIP + "/Pending/" + Path.GetFileName(local_file_path));
-                string requestpath = @"ftp://" + ftpServerIP + FTPServerPath + "//" + Path.GetFileName(local_file_path);
+                logger.Info("Uploading file " + local_file_path + " to address " + ftpServerIP + FTPServerPath + "/" + Path.GetFileName(local_file_path));
+                string requestpath = @"ftp://" + ftpServerIP + FTPServerPath + "/" + Path.GetFileName(local_file_path);
                 using (var client = new WebClient())
                 {
                     client.Credentials = new NetworkCredential(ftpUserName, ftpPassword);
                     client.UploadFile(requestpath, WebRequestMethods.Ftp.UploadFile, local_file_path);
+                    logger.Info("File uploaded successfully on path : "+requestpath);
                 }
             }
             catch (Exception ex)
             {
-                logger.Info(ex.Message);
+                logger.Info(ex);
             }
 
         }
