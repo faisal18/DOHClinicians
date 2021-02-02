@@ -13,6 +13,7 @@
             //UploadOnLMU
 
             DOH obj = new DOH();
+            obj.Controller();
         }
     }
 }

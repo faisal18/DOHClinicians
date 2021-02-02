@@ -2,7 +2,7 @@
 {
     public class GateParams
     {
-        public string DHA_Input;
+        public string HAAD_Input;
 
         public string LMU_isActive;
         public string LMU_Source;

@@ -15,7 +15,7 @@ namespace DOHClinicians
 
         public static void Info(string data)
         {
-            Console.WriteLine(data);
+            //Console.WriteLine(data);
             using (StreamWriter streamWriter = File.AppendText(string.Concat(baseDir, "\\Infolog.csv")))
             {
                 streamWriter.Write(string.Concat(new object[] { DateTime.Now, " : ", data, "\n" }));
@@ -24,7 +24,7 @@ namespace DOHClinicians
 
         public static void Info(Exception data)
         {
-            Console.WriteLine(data);
+            //Console.WriteLine(data);
             using (StreamWriter streamWriter = File.AppendText(string.Concat(baseDir, "\\Infolog.csv")))
             {
                 streamWriter.Write(string.Concat(new object[] { DateTime.Now, " : ", data, "\n" }));

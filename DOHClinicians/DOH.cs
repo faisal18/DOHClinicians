@@ -39,10 +39,7 @@ namespace DOHClinicians
         #endregion
 
         #region MainFunctions
-        public DOH()
-        {
-            Controller();
-        }
+
         public void Controller()
         {
             
@@ -56,11 +53,11 @@ namespace DOHClinicians
             try
             {
 
-                //if (CreateOutputFile(GetActiveCliniciansController(Clinician_FilePath, ClinicianHistory_FilePath), Clinician_Transformed_FilePath))
-                if (true)
+                if (CreateOutputFile(GetActiveCliniciansController(Clinician_FilePath, ClinicianHistory_FilePath), Clinician_Transformed_FilePath))
                 {
                     logger.Info("File Downloaded successfully");
 
+                    bool uploaded = false;
 
                     if (to_filter)
                     {
@@ -70,16 +67,20 @@ namespace DOHClinicians
                             {
                                 if (LMU_Upload)
                                 {
+                                    RemoveDuplicates(Clinician_Filtered_FilePath);
                                     LMU_ParserCS.LMU_Controller(Clinician_Filtered_FilePath);
+                                    uploaded = true;
+
                                 }
                             }
                         }
                     }
 
-                    //if(LMU_Upload)
-                    //{
-                    //    LMU_ParserCS.LMU_Controller(Clinician_Transformed_FilePath);
-                    //}
+                    if (LMU_Upload == true && uploaded == false)
+                    {
+                        RemoveDuplicates(Clinician_Filtered_FilePath);
+                        LMU_ParserCS.LMU_Controller(Clinician_Transformed_FilePath);
+                    }
                 }
 
 
@@ -90,9 +91,6 @@ namespace DOHClinicians
                 logger.Info(ex);
             }
         }
-
-
-
         private bool CreateOutputFile(List<Clinicians> list_doh, string FullPath)
         {
             bool result = false;
@@ -100,10 +98,8 @@ namespace DOHClinicians
             {
 
                 StringBuilder sb = new StringBuilder();
-                //string header = "License,name,Facility License,Facility Name,area,Active From,Active To,is active,source,Specialty ID 1,Username,Password,Gender,"
-                //    +"Nationality,Specialty ID 2,Specialty ID 3,type,Email,Phone,Specialty,Specialty Field ID,Specialty Field,major,profession,HAAD_Category,Current Status ,Old License\n";
-
-                string header = "License,name,Username,Password,Facility License,Facility Name,area,Active From,Active To,is active,source,Specialty ID 1,Specialty,Gender,Nationality,Email,Phone,Specialty ID 2,Specialty ID 3,type,Old License,SpecialtyFieldID,SpecialtyField,Major,Profession,Haad Category,Current Status\n";
+                //string header = "License,name,Username,Password,Facility License,Facility Name,area,Active From,Active To,is active,source,Specialty ID 1,Specialty,Gender,Nationality,Email,Phone,Specialty ID 2,Specialty ID 3,type,Old License,SpecialtyFieldID,SpecialtyField,Major,Profession,Haad Category,Current Status\n";
+                string header = "License,name,Username,Password,Facility License,Facility Name,area,Active From,Active To,is active,source,Specialty ID 1,Specialty,Gender,Nationality,Email,Phone,Specialty ID 2,Specialty ID 3,type,Old License,Specialty Field ID,Specialty Field,major,profession,HAAD_Category,Current Status \n";
 
                 sb.Append(header);
                 string seperator = ",";
@@ -160,6 +156,10 @@ namespace DOHClinicians
 
             return result;
         }
+
+        #endregion
+
+        #region MakeAList
         private List<Clinicians> GetActiveCliniciansController(string CliniciansPath, string CliniciansHistoryPath)
         {
             List<Clinicians> lst_Clinician_new = new List<Clinicians>();
@@ -191,7 +191,7 @@ namespace DOHClinicians
                     lst_Clinician = lst_Clinician.Where(x => x.Status.ToUpper() == "ACTIVE").ToList();
                     foreach (Clinicians obj in lst_Clinician)
                     {
-                        logger.Info("Mapping active clinician "+ obj.ClinicianLicense + " to active clinician history");
+                        logger.Info("Mapping active clinician " + obj.ClinicianLicense + " to active clinician history");
 
                         if (lst_ClinicianHistory.Any(x => x.LicenseNumber == obj.ClinicianLicense))
                         {
@@ -212,8 +212,7 @@ namespace DOHClinicians
             }
 
             return lst_Clinician_new;
-        } 
-
+        }
         private List<Clinicians> ListofClinicians(string FullPath)
         {
             bool result = false;
@@ -222,7 +221,7 @@ namespace DOHClinicians
 
             try
             {
-                
+
                 logger.Info("Objectifying file " + FullPath);
                 int row = 0;
                 try
@@ -252,7 +251,7 @@ namespace DOHClinicians
                         //obj_file.From = DateTime.ParseExact(Helper.CheckNull(rows[11]), "d/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture);
                         //obj_file.To = DateTime.ParseExact(Helper.CheckNull(rows[12]), "d/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture);
 
-                        obj_file.From = Helper.DateParser(rows[11]) ;
+                        obj_file.From = Helper.DateParser(rows[11]);
                         obj_file.To = Helper.DateParser(rows[12]);
 
 
@@ -260,13 +259,13 @@ namespace DOHClinicians
                         list_doh.Add(obj_file);
                     }
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
-                    logger.Info("Inner loop exception in Clinician on parsing record "+ (list_doh.Count + 1)+ " exception:"+ex.Message);
+                    logger.Info("Inner loop exception in Clinician on parsing record " + (list_doh.Count + 1) + " exception:" + ex.Message);
                 }
 
                 list_doh = list_doh.Where(x => x.Status.ToUpper() == "ACTIVE").ToList();
-                
+
             }
             catch (Exception ex)
             {
@@ -282,7 +281,7 @@ namespace DOHClinicians
                 //take latest only
                 //dd-MMM-yyyy
                 int row = 0;
-                foreach(string line in File.ReadAllLines(FullPath))
+                foreach (string line in File.ReadAllLines(FullPath))
                 {
                     try
                     {
@@ -319,144 +318,8 @@ namespace DOHClinicians
             }
             return lst_obj;
         }
-
-        #endregion
-
-        #region Custom
-
-
-
-        private bool DownloadFile(string FullPath, string URL)
-        {
-            bool result = false;
-            logger.Info("Downloading file");
-
-            try
-            {
-                ServicePointManager.Expect100Continue = true;
-                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-
-                using (WebClient wc = new WebClient())
-                {
-                    wc.DownloadFile(URL, FullPath);
-                    result = true;
-                }
-                logger.Info("File downloaded successfully");
-
-            }
-            catch (Exception ex)
-            {
-                logger.Info(ex);
-            }
-            return result;
-        }
-        private bool ConvertFiletoCSV(string FullPath, string sheetname)
-        {
-            bool result = false;
-            logger.Info("Converting excel file to CSV");
-            try
-            {
-                DataTable sheetTable = ExceltoCSV.execute(FullPath, sheetname);
-
-                if (sheetTable != null)
-                {
-                    if (sheetTable.Rows.Count > 1)
-                    {
-                        SQLWriter yo = new SQLWriter();
-                        logger.Info("Writing Datatable to file");
-                        yo.run(baseDir, Path.GetFileNameWithoutExtension(FullPath) + ".csv", sheetTable);
-                        result = true;
-                        logger.Info("Converion successfull");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.Info(ex);
-            }
-            return result;
-        }
-
-
-        //private System.Data.OleDb.OleDbConnection returnConnection(string fileName)
-        //{
-
-        //    //"Provider=Microsoft.ACE.OLEDB.12.0;Data Source=" + path + ";Extended Properties=Excel 12.0;";
-        //    //return new System.Data.OleDb.OleDbConnection("Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" + fileName + "; Jet OLEDB:Engine Type=5;Extended Properties=\"Excel 8.0;\"");
-        //    return new System.Data.OleDb.OleDbConnection("Provider=Microsoft.ACE.OLEDB.12.0;Data Source=" + fileName + ";Extended Properties=\"Excel 12.0;\"");
-        //    //return new System.Data.OleDb.OleDbConnection("Provider=Microsoft.ACE.OLEDB.12.0;Data Source='" + fileName + "';Extended Properties='Excel 12.0 Xml;HDR=YES;IMEX=1'");
-
-        //}
-        //private DataTable loadSingleSheet(string fileName, string sheetName)
-        //{
-        //    DataTable sheetData = new DataTable();
-
-        //    try
-        //    {
-        //        using (System.Data.OleDb.OleDbConnection conn = this.returnConnection(fileName))
-        //        {
-        //            conn.Open();
-        //            System.Data.OleDb.OleDbDataAdapter sheetAdapter = new System.Data.OleDb.OleDbDataAdapter("select * from [" + sheetName + "]", conn);
-        //            sheetAdapter.Fill(sheetData);
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        logger.Info(ex);
-        //    }
-        //    return sheetData;
-        //}
-
-        #endregion
-
-        private bool FilterFile(string OldFilePath, string NewFilePath)
-        {
-            bool result = false;
-            string header = "License,name,Username,Password,Facility License,Facility Name,area,Active From,Active To,is active,source,Specialty ID 1,Specialty,Gender,Nationality,Email,Phone,Specialty ID 2,Specialty ID 3,type,Old License,SpecialtyFieldID,SpecialtyField,Major,Profession,Haad Category,Current Status\n";
-
-            try
-            {
-                logger.Info("filtering out the file");
-                string[] NEW = File.ReadAllLines(NewFilePath);
-                string[] OLD = File.ReadAllLines(OldFilePath);
-                IEnumerable<String> NEWonly = NEW.Except(OLD);
-                File.WriteAllText(Clinician_Filtered_FilePath, header);
-                File.AppendAllLines(Clinician_Filtered_FilePath, NEWonly);
-                //File.AppendAllLines()
-                result = true;
-
-            }
-            catch (Exception ex)
-            {
-                logger.Info(ex);
-            }
-            return result;
-        }
-
         private List<CliniciansTransformed> ObjectifyTransformedfiles(string filepath)
         {
-
-
-            //List<CliniciansTransformed> Old = ObjectifyTransformedfiles(Clinician_Transformed_Old_FilePath);
-            //List<CliniciansTransformed> New = ObjectifyTransformedfiles(Clinician_Transformed_FilePath);
-            //List<CliniciansTransformed> first = new List<CliniciansTransformed>();
-            //List<CliniciansTransformed> second = new List<CliniciansTransformed>();
-            //List<CliniciansTransformed> final = new List<CliniciansTransformed>();
-            ////first = New.Except(Old).ToList();
-            ////second = Old.Except(New).ToList();
-            ////final = first.Concat(second).ToList();
-            //foreach(CliniciansTransformed objNew in New)
-            //{
-            //    foreach(CliniciansTransformed objOld in Old)
-            //    {
-            //        if(!objNew.Equals(objOld))
-            //        {
-            //            final.Add(objNew);
-            //        }
-            //    }
-            //}
-
-
             List<CliniciansTransformed> list = new List<CliniciansTransformed>();
 
             try
@@ -508,5 +371,100 @@ namespace DOHClinicians
 
             return list;
         }
+
+        #endregion
+
+        #region Custom
+        private static void RemoveDuplicates(string filepath)
+        {
+            logger.Info("Removing Duplicates");
+            try
+            {
+                string[] linese = File.ReadAllLines(filepath);
+                File.WriteAllLines(filepath, linese.Distinct().ToArray());
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex);
+            }
+            logger.Info("Duplicates Removed");
+
+        }
+        private bool DownloadFile(string FullPath, string URL)
+        {
+            bool result = false;
+            logger.Info("Downloading file");
+
+            try
+            {
+                ServicePointManager.Expect100Continue = true;
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+
+                using (WebClient wc = new WebClient())
+                {
+                    wc.DownloadFile(URL, FullPath);
+                    result = true;
+                }
+                logger.Info("File downloaded successfully");
+
+            }
+            catch (Exception ex)
+            {
+                logger.Info(ex);
+            }
+            return result;
+        }
+        private bool ConvertFiletoCSV(string FullPath, string sheetname)
+        {
+            bool result = false;
+            logger.Info("Converting excel file to CSV");
+            try
+            {
+                DataTable sheetTable = ExceltoCSV.execute(FullPath, sheetname);
+
+                if (sheetTable != null)
+                {
+                    if (sheetTable.Rows.Count > 1)
+                    {
+                        SQLWriter yo = new SQLWriter();
+                        logger.Info("Writing Datatable to file");
+                        yo.run(baseDir, Path.GetFileNameWithoutExtension(FullPath) + ".csv", sheetTable);
+                        result = true;
+                        logger.Info("Converion successfull");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.Info(ex);
+            }
+            return result;
+        }
+        private bool FilterFile(string OldFilePath, string NewFilePath)
+        {
+            bool result = false;
+            string header = "License,name,Username,Password,Facility License,Facility Name,area,Active From,Active To,is active,source,Specialty ID 1,Specialty,Gender,Nationality,Email,Phone,Specialty ID 2,Specialty ID 3,type,Old License,Specialty Field ID,Specialty Field,major,profession,HAAD_Category,Current Status \n";
+
+            try
+            {
+                logger.Info("filtering out the file");
+                string[] NEW = File.ReadAllLines(NewFilePath);
+                string[] OLD = File.ReadAllLines(OldFilePath);
+                IEnumerable<String> NEWonly = NEW.Except(OLD);
+                File.WriteAllText(Clinician_Filtered_FilePath, header);
+                File.AppendAllLines(Clinician_Filtered_FilePath, NEWonly);
+                //File.AppendAllLines()
+                result = true;
+
+            }
+            catch (Exception ex)
+            {
+                logger.Info(ex);
+            }
+            return result;
+        }
+        #endregion
+
+
     }
 }

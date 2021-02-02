@@ -26,7 +26,7 @@ namespace DOHClinicians
         private static string LMU_Parser(string filepath)
         {
             string baseDir = ConfigurationManager.AppSettings.Get("baseDir");
-            string newfilename = "Clinicians_DOH_" + DateTime.Now.ToString("yyyyMMdd") + "_LMUPassed.csv";
+            string newfilename = "DOH_Clinicians" + DateTime.Now.ToString("yyyyMMdd") + "_LMUPassed.csv";
 
             try
             {
@@ -35,11 +35,14 @@ namespace DOHClinicians
                 string[] lines = File.ReadAllLines(filepath);
 
                 StringBuilder sb = new StringBuilder();
-                sb.Append("License,name,Username,Password,Facility License,Facility Name,area,Active From,Active To,is active,source," +
-                            "Specialty ID 1,Specialty,Gender,Nationality,Email,Phone,Specialty ID 2,Specialty ID 3,type,Old License\n");
+                //sb.Append("License,name,Username,Password,Facility License,Facility Name,area,Active From,Active To,is active,source," +
+                //            "Specialty ID 1,Specialty,Gender,Nationality,Email,Phone,Specialty ID 2,Specialty ID 3,type,Old License\n");
+
+
+                sb.Append("License,name,Username,Password,Facility License,Facility Name,area,Active From,Active To,is active,source,Specialty ID 1,Specialty,Gender,Nationality,Email,Phone,Specialty ID 2,Specialty ID 3,type,Old License,Specialty Field ID,Specialty Field,major,profession,HAAD_Category,Current Status \n");
 
                 string latestversion = GetLMULatest();
-                string Specialitiesversion = GetLMUSpecialitesLatest();
+                //string Specialitiesversion = GetLMUSpecialitesLatest();
 
                 if (lines.Length > 0)
                 {
@@ -50,6 +53,9 @@ namespace DOHClinicians
                         string[] data = lines[i].Split(',');
                         logger.Info("LMU iteration " + i + " clinician license " + data[0]);
 
+                        //string SpecialityID = data[11];
+                        //string Speciality = data[12];
+                        //Speciality = GetLMURecordForSpecialities(SpecialityID, Specialitiesversion);
 
                         string license = data[0];
                         string license_start = data[7];
@@ -57,24 +63,14 @@ namespace DOHClinicians
                         string isActive = data[9];
                         string source = data[10];
 
-                        //string SpecialityID = data[11];
-                        //string Speciality = data[12];
-
-
-
-
                         GateParams obj = GetClinicianRecord(license, latestversion);
-                        obj.DHA_Input = CheckActive_Reverse(isActive);
+                        obj.HAAD_Input = CheckActive_Reverse(isActive);
                         obj = GetTruthTable(obj);
+
                         isActive = obj.Out_isActive;
                         source = obj.Out_Source;
-
-                        //Speciality = GetLMURecordForSpecialities(SpecialityID, Specialitiesversion);
-
                         license_start = ConvertDate_LMU(license_start);
                         license_end = ConvertDate_LMU(license_end);
-
-
 
                         sb.Append(
                             data[0] + "," +
@@ -100,7 +96,15 @@ namespace DOHClinicians
                             data[17] + "," +
                             data[18] + "," +
                             data[19] + "," +
-                            data[20] + "\n"
+                            data[20] + "," +
+
+                            //EXTRA
+                            data[21] + "," +
+                            data[22] + "," +
+                            data[23] + "," +
+                            data[24] + "," +
+                            data[25] + "," +
+                            data[26] +"\n"
                             );
                     }
 
@@ -122,42 +126,7 @@ namespace DOHClinicians
 
             return baseDir + newfilename;
         }
-        private static string GetLMULatest()
-        {
-            string result = string.Empty;
-            try
-            {
-                string url = ConfigurationManager.AppSettings.Get("LMU_URL") + ConfigurationManager.AppSettings.Get("LMU_Clinician_Latest");
-                string username = ConfigurationManager.AppSettings.Get("LMU_Username");
-                string token = ConfigurationManager.AppSettings.Get("LMU_Token");
-                result = PostCall_ByBody(url, "", token, username, false);
-                //result = "7539";
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-            }
-
-            return result;
-        }
-        private static string GetLMUSpecialitesLatest()
-        {
-            string result = string.Empty;
-            try
-            {
-                string url = ConfigurationManager.AppSettings.Get("LMU_URL") + ConfigurationManager.AppSettings.Get("LMU_Specialities_Latest");
-                string username = ConfigurationManager.AppSettings.Get("LMU_Username");
-                string token = ConfigurationManager.AppSettings.Get("LMU_Token");
-                result = PostCall_ByBody(url, "", token, username, false);
-                //result = "7539";
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-            }
-
-            return result;
-        }
+       
         private static GateParams GetClinicianRecord(string data, string latestversion)
         {
             string result = string.Empty;
@@ -201,6 +170,159 @@ namespace DOHClinicians
 
             return obj;
         }
+        private static GateParams GetTruthTable(GateParams obj)
+        {
+            try
+            {
+
+
+                if (obj.LMU_isActive != null && obj.LMU_Source != null)
+                {
+
+                    // ALL SOURCE
+                    if (obj.HAAD_Input.ToUpper() == "TRUE" && obj.LMU_isActive.ToUpper() == "TRUE" && obj.LMU_Source.ToUpper() == "ALL")
+                    {
+                        obj.Out_isActive = "TRUE";
+                        obj.Out_Source = "ALL";
+                    }
+
+                    else if (obj.HAAD_Input.ToUpper() == "TRUE" && obj.LMU_isActive.ToUpper() == "FALSE" && obj.LMU_Source.ToUpper() == "ALL")
+                    {
+                        obj.Out_isActive = "TRUE";
+                        obj.Out_Source = "HAAD";
+                    }
+
+
+                    else if (obj.HAAD_Input.ToUpper() == "FALSE" && obj.LMU_isActive.ToUpper() == "FALSE" && obj.LMU_Source.ToUpper() == "ALL")
+                    {
+                        obj.Out_isActive = "FALSE";
+                        obj.Out_Source = "ALL";
+                    }
+
+                    else if (obj.HAAD_Input.ToUpper() == "FALSE" && obj.LMU_isActive.ToUpper() == "TRUE" && obj.LMU_Source.ToUpper() == "ALL")
+                    {
+                        obj.Out_isActive = "TRUE";
+                        obj.Out_Source = "DHA";
+                    }
+
+
+                    // DHA SOURCE
+                    else if (obj.HAAD_Input.ToUpper() == "TRUE" && obj.LMU_isActive.ToUpper() == "TRUE" && obj.LMU_Source.ToUpper() == "DHA")
+                    {
+                        obj.Out_isActive = "TRUE";
+                        obj.Out_Source = "ALL";
+                    }
+
+                    else if (obj.HAAD_Input.ToUpper() == "TRUE" && obj.LMU_isActive.ToUpper() == "FALSE" && obj.LMU_Source.ToUpper() == "DHA")
+                    {
+                        obj.Out_isActive = "TRUE";
+                        obj.Out_Source = "HAAD";
+                    }
+
+                    else if (obj.HAAD_Input.ToUpper() == "FALSE" && obj.LMU_isActive.ToUpper() == "FALSE" && obj.LMU_Source.ToUpper() == "DHA")
+                    {
+                        obj.Out_isActive = "FALSE";
+                        obj.Out_Source = "ALL";
+                    }
+
+                    else if (obj.HAAD_Input.ToUpper() == "FALSE" && obj.LMU_isActive.ToUpper() == "TRUE" && obj.LMU_Source.ToUpper() == "DHA")
+                    {
+                        obj.Out_isActive = "TRUE";
+                        obj.Out_Source = "DHA";
+                    }
+
+
+                    // HAAD SOURCE
+                    else if (obj.HAAD_Input.ToUpper() == "TRUE" && obj.LMU_isActive.ToUpper() == "TRUE" && obj.LMU_Source.ToUpper() == "HAAD")
+                    {
+                        obj.Out_isActive = "TRUE";
+                        obj.Out_Source = "HAAD";
+                    }
+
+                    else if (obj.HAAD_Input.ToUpper() == "TRUE" && obj.LMU_isActive.ToUpper() == "FALSE" && obj.LMU_Source.ToUpper() == "HAAD")
+                    {
+                        //THINK
+                        obj.Out_isActive = "TRUE";
+                        obj.Out_Source = "HAAD";
+                    }
+
+                    else if (obj.HAAD_Input.ToUpper() == "FALSE" && obj.LMU_isActive.ToUpper() == "FALSE" && obj.LMU_Source.ToUpper() == "HAAD")
+                    {
+                        //THINK
+                        obj.Out_isActive = "FALSE";
+                        obj.Out_Source = "HAAD";
+                    }
+
+                    else if (obj.HAAD_Input.ToUpper() == "FALSE" && obj.LMU_isActive.ToUpper() == "TRUE" && obj.LMU_Source.ToUpper() == "HAAD")
+                    {
+                        obj.Out_isActive = "FALSE";
+                        obj.Out_Source = "HAAD";
+                    }
+
+                }
+
+
+                else if (obj.HAAD_Input.ToUpper() == "TRUE")
+                {
+                    obj.Out_isActive = "TRUE";
+                    obj.Out_Source = "DHA";
+                }
+
+
+                else if (obj.HAAD_Input.ToUpper() == "FALSE")
+                {
+                    obj.Out_isActive = "FALSE";
+                    obj.Out_Source = "DHA";
+                }
+
+
+
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+
+            return obj;
+        }
+
+        private static string GetLMULatest()
+        {
+            string result = string.Empty;
+            try
+            {
+                string url = ConfigurationManager.AppSettings.Get("LMU_URL") + ConfigurationManager.AppSettings.Get("LMU_Clinician_Latest");
+                string username = ConfigurationManager.AppSettings.Get("LMU_Username");
+                string token = ConfigurationManager.AppSettings.Get("LMU_Token");
+                result = PostCall_ByBody(url, "", token, username, false);
+                //result = "7539";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+
+            return result;
+        }
+        private static string GetLMUSpecialitesLatest()
+        {
+            string result = string.Empty;
+            try
+            {
+                string url = ConfigurationManager.AppSettings.Get("LMU_URL") + ConfigurationManager.AppSettings.Get("LMU_Specialities_Latest");
+                string username = ConfigurationManager.AppSettings.Get("LMU_Username");
+                string token = ConfigurationManager.AppSettings.Get("LMU_Token");
+                result = PostCall_ByBody(url, "", token, username, false);
+                //result = "7539";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+
+            return result;
+        }
         private static string GetLMURecordForSpecialities(string data, string Specialitiesversion)
         {
             string result = string.Empty;
@@ -242,110 +364,6 @@ namespace DOHClinicians
             return description;
         }
 
-        private static GateParams GetTruthTable(GateParams obj)
-        {
-            try
-            {
-
-
-                if (obj.LMU_isActive != null && obj.LMU_Source != null)
-                {
-
-                    if (obj.DHA_Input.ToUpper() == "TRUE" && obj.LMU_isActive.ToUpper() == "TRUE" && obj.LMU_Source.ToUpper() == "ALL")
-                    {
-                        obj.Out_isActive = "TRUE";
-                        obj.Out_Source = "ALL";
-                    }
-
-                    else if (obj.DHA_Input.ToUpper() == "FALSE" && obj.LMU_isActive.ToUpper() == "TRUE" && obj.LMU_Source.ToUpper() == "ALL")
-                    {
-                        obj.Out_isActive = "TRUE";
-                        obj.Out_Source = "HAAD";
-                    }
-
-
-                    else if (obj.DHA_Input.ToUpper() == "TRUE" && obj.LMU_isActive.ToUpper() == "FALSE" && obj.LMU_Source.ToUpper() == "ALL")
-                    {
-                        obj.Out_isActive = "TRUE";
-                        obj.Out_Source = "DHA";
-                    }
-
-                    else if (obj.DHA_Input.ToUpper() == "TRUE" && obj.LMU_isActive.ToUpper() == "FALSE" && obj.LMU_Source.ToUpper() == "DHA")
-                    {
-                        obj.Out_isActive = "TRUE";
-                        obj.Out_Source = "DHA";
-                    }
-
-                    else if (obj.DHA_Input.ToUpper() == "FALSE" && obj.LMU_isActive.ToUpper() == "TRUE" && obj.LMU_Source.ToUpper() == "DHA")
-                    {
-                        obj.Out_isActive = "FALSE";
-                        obj.Out_Source = "DHA";
-                    }
-
-                    else if (obj.DHA_Input.ToUpper() == "FALSE" && obj.LMU_isActive.ToUpper() == "FALSE" && obj.LMU_Source.ToUpper() == "DHA")
-                    {
-                        obj.Out_isActive = "FALSE";
-                        obj.Out_Source = "DHA";
-                    }
-
-                    else if (obj.DHA_Input.ToUpper() == "TRUE" && obj.LMU_isActive.ToUpper() == "TRUE" && obj.LMU_Source.ToUpper() == "DHA")
-                    {
-                        obj.Out_isActive = "TRUE";
-                        obj.Out_Source = "DHA";
-                    }
-
-                    else if (obj.DHA_Input.ToUpper() == "TRUE" && obj.LMU_isActive.ToUpper() == "TRUE" && obj.LMU_Source.ToUpper() == "HAAD")
-                    {
-                        obj.Out_isActive = "TRUE";
-                        obj.Out_Source = "ALL";
-                    }
-
-                    else if (obj.DHA_Input.ToUpper() == "FALSE" && obj.LMU_isActive.ToUpper() == "TRUE" && obj.LMU_Source.ToUpper() == "HAAD")
-                    {
-                        obj.Out_isActive = "TRUE";
-                        obj.Out_Source = "HAAD";
-                    }
-
-                }
-
-
-                else if (obj.DHA_Input.ToUpper() == "TRUE")
-                {
-                    obj.Out_isActive = "TRUE";
-                    obj.Out_Source = "DHA";
-                }
-
-
-                else if (obj.DHA_Input.ToUpper() == "FALSE")
-                {
-                    obj.Out_isActive = "FALSE";
-                    obj.Out_Source = "DHA";
-                }
-
-
-
-
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-            }
-
-            return obj;
-        }
-        private static string CheckActive_Reverse(string data)
-        {
-            string active = string.Empty;
-
-            if (data.ToString() == "Deactivated")
-                active = "False";
-            if (data.ToString() == "Active")
-                active = "True";
-            else
-                active = "False";
-
-            return active;
-        }
         private static string PostCall_ByBody(string URL, string postdata, string accessKey, string username, bool isGet)
         {
             string result = string.Empty;
@@ -434,28 +452,6 @@ namespace DOHClinicians
                 return ex.Message;
             }
         }
-        private static string ConvertDate_LMU(string date)
-        {
-            string resultdate = date;
-            try
-            {
-                if (date != null)
-                {
-                    if (date.Length > 0)
-                    {
-                        resultdate = Convert.ToDateTime(date).ToString("yyyy-MM-dd");
-                    }
-                }
-
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-            }
-
-            return resultdate;
-        }
-
         private static void Upload_File(string local_file_path)
         {
             string ftpUserName = System.Configuration.ConfigurationManager.AppSettings["FTPUsername"];
@@ -480,5 +476,42 @@ namespace DOHClinicians
             }
 
         }
+
+        private static string CheckActive_Reverse(string data)
+        {
+            string active = string.Empty;
+
+            if (data.ToString() == "Deactivated")
+                active = "False";
+            if (data.ToString() == "Active")
+                active = "True";
+            else
+                active = "False";
+
+            return active;
+        }
+        private static string ConvertDate_LMU(string date)
+        {
+            string resultdate = date;
+            try
+            {
+                if (date != null)
+                {
+                    if (date.Length > 0)
+                    {
+                        resultdate = Convert.ToDateTime(date).ToString("yyyy-MM-dd");
+                    }
+                }
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+
+            return resultdate;
+        }
     }
+
+
 }
