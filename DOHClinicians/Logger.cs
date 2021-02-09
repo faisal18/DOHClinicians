@@ -12,11 +12,12 @@ namespace DOHClinicians
     class logger
     {
         public static string baseDir = ConfigurationManager.AppSettings.Get("baseDir");
+        public static string dater = System.DateTime.Now.ToString("yyyyMMddhhmmss");
 
         public static void Info(string data)
         {
             //Console.WriteLine(data);
-            using (StreamWriter streamWriter = File.AppendText(string.Concat(baseDir, "\\Infolog.csv")))
+            using (StreamWriter streamWriter = File.AppendText(string.Concat(baseDir, "\\Infolog_"+ dater + ".csv")))
             {
                 streamWriter.Write(string.Concat(new object[] { DateTime.Now, " : ", data, "\n" }));
             }
@@ -25,7 +26,7 @@ namespace DOHClinicians
         public static void Info(Exception data)
         {
             //Console.WriteLine(data);
-            using (StreamWriter streamWriter = File.AppendText(string.Concat(baseDir, "\\Infolog.csv")))
+            using (StreamWriter streamWriter = File.AppendText(string.Concat(baseDir, "\\Infolog_" + dater + ".csv")))
             {
                 streamWriter.Write(string.Concat(new object[] { DateTime.Now, " : ", data, "\n" }));
             }

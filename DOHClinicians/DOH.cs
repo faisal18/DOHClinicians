@@ -53,7 +53,9 @@ namespace DOHClinicians
             try
             {
 
+                //if(true)
                 if (CreateOutputFile(GetActiveCliniciansController(Clinician_FilePath, ClinicianHistory_FilePath), Clinician_Transformed_FilePath))
+
                 {
                     logger.Info("File Downloaded successfully");
 
@@ -184,20 +186,44 @@ namespace DOHClinicians
                     lst_ClinicianHistory = ListofCliniciansHistory(baseDir + Path.GetFileNameWithoutExtension(ClinicianHistory_filename) + ".csv");
                 }
 
-                if (lst_Clinician.Count > 0 && lst_ClinicianHistory.Count > 0)
+                //lst_Clinician = ListofClinicians(baseDir + Path.GetFileNameWithoutExtension(Clinician_filename) + ".csv");
+                //lst_ClinicianHistory = ListofCliniciansHistory(baseDir + Path.GetFileNameWithoutExtension(ClinicianHistory_filename) + ".csv");
+
+                if (lst_Clinician.Count > 1 && lst_ClinicianHistory.Count > 1)
                 {
                     logger.Info("Both lists Parsed succssesufully");
 
                     lst_Clinician = lst_Clinician.Where(x => x.Status.ToUpper() == "ACTIVE").ToList();
                     foreach (Clinicians obj in lst_Clinician)
                     {
-                        logger.Info("Mapping active clinician " + obj.ClinicianLicense + " to active clinician history");
 
+
+                        logger.Info("Mapping active clinician " + obj.ClinicianLicense + " to active clinician history");
                         if (lst_ClinicianHistory.Any(x => x.LicenseNumber == obj.ClinicianLicense))
                         {
-                            logger.Info("Adding clinician to main list");
+                            logger.Info("Clinician " + obj.ClinicianLicense + " added to the main list");
                             lst_Clinician_new.Add(obj);
                         }
+                        else
+                        {
+                            logger.Info("Clinician " + obj.ClinicianLicense + " not added to the main list");
+                        }
+
+                        //if (obj.ClinicianLicense != "GD25903")
+                        //{
+                        //    continue;
+                        //}
+                        //List<CliniciansHistory> lst_ClinicianHistory2 = lst_ClinicianHistory.Where(x => x.LicenseNumber == "GD25903").ToList();
+                        //if (lst_ClinicianHistory2.Any(x => x.LicenseNumber == obj.ClinicianLicense))
+                        //{
+                        //    logger.Info("Clinician " + obj.ClinicianLicense + " added to the main list");
+                        //    lst_Clinician_new.Add(obj);
+                        //}
+                        //else
+                        //{
+                        //    logger.Info("Clinician " + obj.ClinicianLicense + " not added to the main list");
+                        //}
+
                     }
                 }
                 else
@@ -290,13 +316,17 @@ namespace DOHClinicians
                         {
                             continue;
                         }
+
                         string[] rows = line.Split('^');
                         CliniciansHistory obj = new CliniciansHistory();
 
                         obj.LicenseNumber = Helper.CheckNull(Helper.CheckComma(rows[0]));
                         obj.FacilityLicenseNumber = Helper.CheckNull(Helper.CheckComma(rows[1]));
+
                         //obj.EffectiveDate = DateTime.ParseExact(Helper.CheckNull(rows[2]), "d-MMM-yy", System.Globalization.CultureInfo.InvariantCulture);
-                        obj.EffectiveDate = Helper.ConvertDate(rows[2]);
+                        //obj.EffectiveDate = Helper.ConvertDate(rows[2]);
+                        obj.EffectiveDate = Convert.ToDateTime(Helper.ConvertDate(rows[2]));
+
                         obj.Status = Helper.CheckNull(Helper.CheckComma(rows[3]));
                         lst_obj.Add(obj);
 
@@ -308,6 +338,8 @@ namespace DOHClinicians
                         logger.Info("Inner loop exception in CliniciansHistory on parsing record " + (lst_obj.Count + 1) + " exception:" + ex.Message);
                     }
                 }
+
+                logger.Info("Process complete");
 
                 lst_obj = lst_obj.GroupBy(x => x.LicenseNumber).Select(x => x.OrderByDescending(y => y.EffectiveDate).First()).ToList();
                 lst_obj = lst_obj.Where(x => x.Status.ToUpper() == "ACTIVE").ToList();
@@ -385,7 +417,7 @@ namespace DOHClinicians
             }
             catch (Exception ex)
             {
-                logger.Error(ex);
+                logger.Info(ex);
             }
             logger.Info("Duplicates Removed");
 
