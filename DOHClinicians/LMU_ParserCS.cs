@@ -72,6 +72,10 @@ namespace DOHClinicians
                         license_start = ConvertDate_LMU(license_start);
                         license_end = ConvertDate_LMU(license_end);
 
+                        //Added as per new changes and blockage issues being faced due to EMPTY Specialities field that are being sent
+                        //10March2021
+                        if (source == "DHA") { data[12] = "D001"; }
+
                         sb.Append(
                             data[0] + "," +
                             data[1] + "," +
@@ -87,6 +91,7 @@ namespace DOHClinicians
                             data[11] + "," +
 
                             //Speciality + "," +
+                            //if(source == "DHA") { data[12] = "D001" };
                             data[12] + "," +
 
                             data[13] + "," +
